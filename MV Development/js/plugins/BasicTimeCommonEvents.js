@@ -3,7 +3,7 @@
  *
  *  By Eugen Eistrach
  *  BasicTimeCommonEvents.js
- *  Version: 1.0.0
+ *  Version: 1.0.1
  *  Kommerziel und nicht kommerziel frei benutzbar.
  */
 /*:
@@ -15,31 +15,40 @@
  * @desc Definiere Verbindungen zwischen Zeiteinheit und CommonEvent. [Zeiteinheit, commonEventID], ...
  * @default [minute, 1], [hour, 2]
  *
+ * @param Switch ID
+ * @desc Switch ID for enabling or disabling this plugin ingame
+ * @default 1
+ * 
  * @help
  * BasicTimeCore.js wird benötigt und muss im PluginManager über diesem Plugin liegen.
  *
  */
-if (!PluginManager._scripts.contains("BasicTimeCore")){
-  throw new Error("This plugin needs BasicTimeCore to work properly!");
+if (!PluginManager._scripts.contains("BasicTimeCore")) {
+    throw new Error("This plugin needs BasicTimeCore to work properly!");
 }
 var BasicTimeCommonEvents = {};
+(function ($) {
+    "use strict";
 
-(function($) {
-  "use strict";
-  $.Parameters = PluginManager.parameters("BasicTimeCommonEvents");
-  var regex = /\[*(\w+) *, *(\d+) *\]/ig;
-  var match = regex.exec($.Parameters['Unit CE Connections']);
+    $.Parameters = PluginManager.parameters("BasicTimeCommonEvents");
+    $.Connections = EVGUtils.convertArrayConfig($.Parameters['Unit CE Connections']);
+    $.ControllSwitchID = Number($.Parameters['Switch ID']);
 
-  var createCallbackFunc = function(id){
-      return function(){
-        $gameTemp.reserveCommonEvent(id);
-      }
-  }
+    $.updateUnit = {};
 
-  while (match !== null) {
-    var funcName = "notify_" + match[1] + "_ce";
-    $[funcName] = createCallbackFunc(Number(match[2]));
-    BasicTimeCore.RegisterOnChangeEvent(match[1], $[funcName].bind($));
-    match = regex.exec($.Parameters['Unit CE Connections']);
-  }
+    var createUpdateFunc = function (variableID) {
+        return function () {
+            if (EVGUtils.isSwitchOn($.ControllSwitchID))
+                $gameTemp.reserveCommonEvent(variableID);
+        }
+    }
+
+    $.InitializeConfig = function () {
+        for (var i = 0; i < $.Connections.length; i++) {
+            var unit = $.Connections[i];
+            $.updateUnit[unit] = createUpdateFunc(Number($.Connections[i][1]));
+            BasicTimeCore.registerOnchangeEvent(unit, $.updateUnit[unit].bind($));
+        }
+    }
+    $.InitializeConfig();
 })(BasicTimeCommonEvents);
