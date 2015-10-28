@@ -3,7 +3,7 @@
  *
  *  By Eugen Eistrach
  *  BasicTimeVariables.js
- *  Version: 1.0.0
+ *  Version: 1.0.1
  *  Free for commercial and non commercial use.
  */
 /*:
@@ -14,55 +14,62 @@
  * @param Unit Variables Connections
  * @desc Define connections between units and rpg maker mv variables. [unit, variableID], ...
  * @default [minute, 1], [hour, 2]
+ * 
+ * @param Switch ID
+ * @desc Switch ID for enabling or disabling this plugin ingame
+ * @default 1
+ * 
  *
  * @help
  * Do not change the variables with the configured ids manually, cause this will
  * cause unexpected behaviour.
  */
-if (!PluginManager._scripts.contains("BasicTimeCore")){
-  throw new Error("This plugin needs BasicTimeCore to work properly!");
+if (!PluginManager._scripts.contains("BasicTimeCore")) {
+    throw new Error("This plugin needs BasicTimeCore to work properly!");
 }
 var BasicTimeVariables = {};
+(function ($) {
+    "use strict";
 
-(function($) {
-  "use strict";
-  $.Parameters = PluginManager.parameters("BasicTimeVariables");
-  var regex = /\[*(\w+) *, *(\d+) *\]/ig;
-  var match = regex.exec($.Parameters['Unit Variables Connections']);
-  $.unitsToUpdate = [];
+    $.Parameters = PluginManager.parameters("BasicTimeVariables");
+    $.Connections       = EVGUtils.convertArrayConfig($.Parameters['Unit Variables Connections']);
+    $.ControllSwitchID  = Number($.Parameters['Switch ID']);
 
-  var createUpdateVariablesFunc = function(unit, variableID){
-      return function(){
-        $gameVariables.setValue(variableID, BasicTimeCore[unit]);
-      }
-  }
+    $._units = [];
+    $.updateUnit = {};
 
-  $.UpdateAllVariables = function(){
-    for (var i = 0; i < this.unitsToUpdate.length; i++)
-    {
-      var funcName = "update_" + this.unitsToUpdate[i] + "_variable";
-      $[funcName]();
+    var createUpdateFunc = function (variableID, unit) {
+        return function () {$gameVariables.setValue(variableID, BasicTimeCore[unit])}
     }
-  }
 
-  while (match !== null) {
-    var funcName = "update_" + match[1] + "_variable";
-    $.unitsToUpdate.push(match[1]);
-    $[funcName] = createUpdateVariablesFunc(match[1], Number(match[2]))
-    match = regex.exec($.Parameters['Unit Variables Connections'])
-  }
+    $.InitializeConfig = function () {
+        for (var i = 0; i < $.Connections.length; i++) {
+            var unit = $.Connections[i][0]
+            $._units.push(unit);
+            $.updateUnit[unit] = createUpdateFunc(Number($.Connections[i][1]), unit);
+        }
+    }
 
-  var oldDM_setupNewGame = DataManager.setupNewGame;
-  DataManager.setupNewGame = function() {
-      oldDM_setupNewGame.call(this);
-      $.UpdateAllVariables();
-  };
+    $.updateAll = function () {
+        if (EVGUtils.isSwitchOn($.ControllSwitchID)) {
+            for (var i = 0; i < $._units.length; i++) {
+                $.updateUnit[$._units[i]]();
+            }
+        } 
+    }
+    BasicTimeCore.registerOnChangeEvent("_any_", $.updateAll.bind($));
 
-  var oldDM_extractSaveContents = DataManager.extractSaveContents;
-  DataManager.extractSaveContents = function(contents) {
-    oldDM_extractSaveContents.call(this, contents);
-    $.UpdateAllVariables();
-  }
+    var oldDM_setupNewGame = DataManager.setupNewGame;
+    DataManager.setupNewGame = function () {
+        oldDM_setupNewGame.call(this);
+        $.updateAll();
+    };
 
-  BasicTimeCore.RegisterOnChangeEvent("_any_", $.UpdateAllVariables.bind($));
+    var oldDM_extractSaveContents = DataManager.extractSaveContents;
+    DataManager.extractSaveContents = function (contents) {
+        oldDM_extractSaveContents.call(this, contents);
+        $.updateAll();
+    }
+
+    $.InitializeConfig();
 })(BasicTimeVariables);
