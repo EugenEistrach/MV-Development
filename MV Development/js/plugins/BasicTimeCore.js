@@ -86,6 +86,8 @@ var EVGUtils = {};
     };
 
     $.isSwitchOn = function (switchId) {
+        if (switchID <= 0 || !(switchId instanceof Number))
+            return true;
         return $gameSwitches !== undefined && $gameSwitches !== null && $gameSwitches.value(switchId);
     }
 
