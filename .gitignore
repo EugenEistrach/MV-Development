@@ -1,0 +1,26 @@
+# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+# *.[oa]
+# *~
+# Blacklist files/folders in same directory as the .gitignore file
+/*
+
+# Whitelist some files
+!.gitignore
+!README.md
+
+# Ignore all files named .DS_Store or ending with .log
+**/.DS_Store
+**.log
+
+# Whitelist folder/a/b1/ and folder/a/b2/
+# last "/" is optional when folder, may match file though.
+# It is NOT optional when followed by a *
+!MV Development/
+MV Development/*
+!MV Development/js/
+MV Development/js/*
+!MV Development/js/plugins/
+MV Development/js/plugins/Default/
