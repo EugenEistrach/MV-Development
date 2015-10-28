@@ -3,7 +3,7 @@
  *
  *  By Eugen Eistrach
  *  BasicTimeHud.js
- *  Version: 1.0.0
+ *  Version: 1.0.1
  *  Free for commercial and non commercial use.
  */
 /*:
@@ -59,127 +59,115 @@
  *  Just use this PluginCommand: Time refreshHud
  *
  */
-if (!PluginManager._scripts.contains("BasicTimeCore")){
-  throw new Error("This plugin needs BasicTimeCore to work properly!");
+if (!PluginManager._scripts.contains("BasicTimeCore")) {
+    throw new Error("This plugin needs BasicTimeCore to work properly!");
 }
+
 var BasicTimeHud = {};
+(function ($) {
+    "use strict";
 
-(function($) {
-  "use strict";
-  $.Parameters = PluginManager.parameters("BasicTimeHud");
-  $.x = Number($.Parameters["Hud X"]);
-  $.y = Number($.Parameters["Hud Y"]);
-  $.width = Number($.Parameters["Hud Width"]);
-  $.height= Number($.Parameters["Hud Height"]);
-  $.switchID = Number($.Parameters["Hud Switch Id"]);
-  $.textToFormat = $.Parameters["Hud Text"];
+    $.Parameters = PluginManager.parameters("BasicTimeHud");
+    $.X                 = Number($.Parameters["Hud X"]);
+    $.Y                 = Number($.Parameters["Hud Y"]);
+    $.Width             = Number($.Parameters["Hud Width"]);
+    $.Height            = Number($.Parameters["Hud Height"]);
+    $.ControllSwitchID  = Number($.Parameters["Hud Switch Id"]);
+    $.TextToFormat      = $.Parameters["Hud Text"];
 
-  function Window_BasicTimeHud(){
-    this.initialize.apply(this, arguments);
-  }
+    $.onAnyChange = function () {
+        if (SceneManager._scene instanceof Scene_Map) {
+            var window = SceneManager._scene._basicTimeHudWindow;
+            if (window !== undefined && window !== null)
+                window.refresh();
+        }
+    };
+    BasicTimeCore.registerOnChangeEvent("_any_", $.onAnyChange.bind($));
 
-  var oldSM_createAllWindows = Scene_Map.prototype.createAllWindows;
-  Scene_Map.prototype.createAllWindows = function() {
-      oldSM_createAllWindows.call(this);
-      this.createBasicTimeHudWindow();
-  }
-
-  $.FormatText = function(text){
-    var nt = $.FormatUnits(text);
-    nt = $.FormatVariables(nt);
-    nt = $.FormatNumbers(nt);
-    return nt;
-  }
-
-  $.FormatNumber = function(number, digits){
-    var zero = digits - number.toString().length + 1;
-    return Array(+(zero > 0 && zero)).join("0") + number;
-  }
-
-  $.FormatUnits = function(text){
-    var units = BasicTimeCore.units;
-    var nt = text;
-    for (var i = 0; i < units.length; i++){
-      var unit = units[i];
-      nt = nt.replace(new RegExp(unit, "g"), BasicTimeCore[unit]);
+    var oldSM_createAllWindows = Scene_Map.prototype.createAllWindows;
+    Scene_Map.prototype.createAllWindows = function () {
+        oldSM_createAllWindows.call(this);
+        this.createBasicTimeHudWindow();
     }
-    return nt;
-  }
 
-  $.FormatNumbers = function(text){
-    var regex  = /\( *(\d+) *, *(\d+) *\)/gi;
-    var regex1 = /\( *(\d+) *, *(\d+) *\)/;
-    function format(match){
-      var m = (regex1).exec(match);
-      return $.FormatNumber(Number(m[1]), Number(m[2]));
+    Scene_Map.prototype.createBasicTimeHudWindow = function () {
+        this._basicTimeHudWindow = new Window_BasicTimeHud();
+        this.addWindow(this._basicTimeHudWindow);
     }
-    return text.replace(regex, format);
-  }
 
-  $.FormatVariables = function(text){
-    var regex = /v\[(\d+)\]/gi;
-    var regex1 = /v\[(\d+)\]/i
-    function getVariable(match){
-      var m = (regex1).exec(match);
-      return $gameVariables.value(Number(m[1]));
+    function Window_BasicTimeHud() {
+        this.initialize.apply(this, arguments);
     }
-    return text.replace(regex, getVariable);
-  }
 
-  $.onAnyChange = function(){
-    if (SceneManager._scene instanceof Scene_Map){
-      var window = SceneManager._scene._basicTimeHudWindow;
-      if (window !== undefined)
-        window.refresh();
-    }
-  };
+    Window_BasicTimeHud.prototype = Object.create(Window_Base.prototype);
+    Window_BasicTimeHud.prototype.constructor = Window_BasicTimeHud;
 
-  BasicTimeCore.RegisterOnChangeEvent("_any_", $.onAnyChange.bind($));
-
-  Scene_Map.prototype.createBasicTimeHudWindow = function() {
-      this._basicTimeHudWindow = new Window_BasicTimeHud();
-      this.addWindow(this._basicTimeHudWindow);
-  }
-
-  Window_BasicTimeHud.prototype = Object.create(Window_Base.prototype);
-  Window_BasicTimeHud.prototype.constructor = Window_BasicTimeHud;
-
-  Window_BasicTimeHud.prototype.initialize = function(x, y){
-      Window_Base.prototype.initialize.call(this, $.x, $.y, $.width, $.height);
-      this.visible = this.IsOkToShow();
-      this.refresh();
-  }
-
-  Window_BasicTimeHud.prototype.refresh = function(){
-      var text = $.FormatText($.textToFormat);
-      this.contents.clear();
-      this.drawText(text, 0, 0, this.contents.width, this.contents.height, 1);
-  }
-
-  Window_BasicTimeHud.prototype.update = function(){
-      Window_Base.prototype.update.call(this);
-      if (this.visible != this.IsOkToShow()){
-        this.visible = this.IsOkToShow();
+    Window_BasicTimeHud.prototype.initialize = function (x, y) {
+        Window_Base.prototype.initialize.call(this, $.X, $.Y, $.Width, $.Height);
+        this.visible = EVGUtils.isSwitchOn($.ControllSwitchID);
         this.refresh();
-      }
-  }
-
-  Window_BasicTimeHud.prototype.IsOkToShow = function()
-  {
-      return $gameSwitches !== undefined && $gameSwitches !== null && $gameSwitches.value($.switchID);
-  }
-
-  // Plugin commands
-  var oldGI_pluginCommand =
-    Game_Interpreter.prototype.pluginCommand;
-  Game_Interpreter.prototype.pluginCommand = function(command, args) {
-    oldGI_pluginCommand.call(this, command, args);
-    if (command === 'Time') {
-      switch (args[0]) {
-        case 'refreshHud':
-          $.onAnyChange();
-          break;
-      }
     }
-  };
+
+    Window_BasicTimeHud.prototype.refresh = function () {
+        this.contents.clear();
+        var text = this.formatText($.TextToFormat); 
+        this.drawText(text, 0, 0, this.contents.width, this.contents.height, 1);
+    }
+
+    Window_BasicTimeHud.prototype.update = function () {
+        Window_Base.prototype.update.call(this);
+        if (this.visible != EVGUtils.isSwitchOn($.ControllSwitchID)) {
+            this.visible = EVGUtils.isSwitchOn($.ControllSwitchID);
+            this.refresh();
+        }
+    }
+
+    Window_BasicTimeHud.prototype.formatText = function(text) {
+        var newText = this.formatUnits(text);
+        newText = this.formatVariables(newText);
+        return this.formatNumbers(newText);
+    }
+
+    Window_BasicTimeHud.prototype.formatUnits = function (text) {
+        var units = BasicTimeCore._units;
+        var newText = text;
+        for (var i = 0; i < units.length; i++) {
+            var unit = units[i];
+            newText = newText.replace(new RegExp(unit, "g"), BasicTimeCore[unit]);
+        }
+        return newText;
+    }
+
+    Window_BasicTimeHud.prototype.formatVariables = function(text) {
+        var regex = /v\[(\d+)\]/gi;
+        var regex1 = /v\[(\d+)\]/i;
+        function getVariable(match) {
+            var result = regex.exec(match);
+            return $gameVariables.value(Number(reuslt[1]));
+        }
+        return text.replace(regex, getVariable);
+    }
+
+    Window_BasicTimeHud.prototype.formatNumbers = function (text) {
+        var regex = /\( *(\d+) *, *(\d+) *\)/gi;
+        var regex1 = /\( *(\d+) *, *(\d+) *\)/;
+        function format(match) {
+            var result = regex1.exec(match);
+            return EVGUtils.formatNumber(Number(result[1]), Number(result[2]));
+        }
+        return text.replace(regex, format);
+    }
+
+    // Plugin commands
+    var oldGI_pluginCommand = Game_Interpreter.prototype.pluginCommand;
+    Game_Interpreter.prototype.pluginCommand = function (command, args) {
+        oldGI_pluginCommand.call(this, command, args);
+        if (command === 'Time') {
+            switch (args[0]) {
+                case 'refreshHud':
+                    $.onAnyChange();
+                    break;
+            }
+        }
+    };
 })(BasicTimeHud);

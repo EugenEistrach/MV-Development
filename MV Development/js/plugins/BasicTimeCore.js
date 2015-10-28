@@ -88,6 +88,11 @@ var EVGUtils = {};
     $.isSwitchOn = function (switchId) {
         return $gameSwitches !== undefined && $gameSwitches !== null && $gameSwitches.value(switchId);
     }
+
+    $.formatNumber = function (number, digits) {
+        var zero = digits - number.toString().length + 1;
+        return Array(+(zero > 0 && zero)).join("0") + number;
+    }
 })(EVGUtils);
 
 var BasicTimeCore = {};
