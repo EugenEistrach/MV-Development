@@ -120,7 +120,7 @@ var BasicTimeCore = BasicTimeCore || {};
     $.UnitConfig = EVGUtils.convertAssignConfig($.Parameters['Units']);
     $.ControlSwitchID = Number($.Parameters['Switch ID']);
     $.UpdateInterval = Number($.Parameters['Update Interval']);
-    $.UpdateDuringMessage = $.Parameters['Update during message'] === "true";
+    $.UpdateDuringMessage = $.Parameters['Update during message'] == "true";
 
     $._interval = null;
     $._units = [];
