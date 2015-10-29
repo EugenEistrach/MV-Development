@@ -100,14 +100,19 @@ var SplashScreen = SplashScreen || {};
     Scene_SplashScreen.prototype.constructor = Scene_SplashScreen;
 
     Scene_SplashScreen.prototype.create = function () {
-        Scene_Base.prototype.create.call(this);
+        Scene_Base.prototype.create.call(this); 
         this._splashIndex = 0;
-        this._picture = new Sprite(ImageManager.loadPicture($.SplashPictures[this._splashIndex]));
-        this.addChild(this._picture);
         this._counter = 0;
         this._maxDuration = $.FadeDuration * 2 + $.SplashDuration;
-        this._doFadeIn = false;
-        this.startFadeIn($.FadeDuration);
+        if ($.SplashPictures.length === 0) {
+            this._doFadeIn = true;
+            return;
+        } else {
+            this._picture = new Sprite(ImageManager.loadPicture($.SplashPictures[this._splashIndex]));
+            this.addChild(this._picture);
+            this._doFadeIn = false;
+            this.startFadeIn($.FadeDuration);
+        }  
     };
 
     Scene_SplashScreen.prototype.goToTitle = function () {
