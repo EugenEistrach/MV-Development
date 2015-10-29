@@ -41,7 +41,7 @@
  *  - BasicTimeCore.unitName                 # same as above
  *  - BasicTimeCore.IsIndoor()               # returns true if current map is indoor
  */
-var EVGUtils = {};
+var EVGUtils = EVGUtils || {};
 
 (function ($) {
     "use strict";
@@ -68,11 +68,11 @@ var EVGUtils = {};
             var result = arrayRegex.exec(configString);
         }
         return config;
-    }
+    };
 
     $.getNumberArray = function (configString) {
         return $.tryArrayConverting(configString).map(function (i) { return Number(i); })
-    }
+    };
 
     $.convertAssignConfig = function (configString) {
         assignRegex.lastIndex = 0;
@@ -85,19 +85,31 @@ var EVGUtils = {};
         return config;
     };
 
+    $.getMultipleConfigParams = function (parameters, regex) {
+        var params = [];
+        Object.keys(parameters).forEach(function (p) {
+            if (p.match(regex)) {
+                var value = parameters[p];
+                if (value.length !== 0 && value.trim())
+                    params.push(value);
+            }
+        });
+        return params;
+    };
+
     $.isSwitchOn = function (switchId) {
-        if (switchID <= 0 || !(switchId instanceof Number))
+        if (switchId <= 0)
             return true;
         return $gameSwitches !== undefined && $gameSwitches !== null && $gameSwitches.value(switchId);
-    }
+    };
 
     $.formatNumber = function (number, digits) {
         var zero = digits - number.toString().length + 1;
         return Array(+(zero > 0 && zero)).join("0") + number;
-    }
+    };
 })(EVGUtils);
 
-var BasicTimeCore = {};
+var BasicTimeCore = BasicTimeCore || {};
 (function ($) {
     "use strict";
     $.IsIndoor = function () {
@@ -218,7 +230,7 @@ var BasicTimeCore = {};
         }
         if (anyChange)
             $.onUnitChange._any_();
-    }
+    };
 
     $.update = function () {
         var sceneCondition = SceneManager._scene instanceof Scene_Map;
@@ -237,12 +249,12 @@ var BasicTimeCore = {};
             $._onUnitChangeEvents[unit] = [];
         if (!$._onUnitChangeEvents[unit].contains(func))
             $._onUnitChangeEvents[unit].push(func);
-    }
+    };
 
     $.setUnit = function (unit, value) {
         $[unit] = value;
         $.clampUnit[unit]();
-    }
+    };
 
     $.changeUnit = function (unit, amount) {
         var sign = amount.sign;
@@ -250,25 +262,25 @@ var BasicTimeCore = {};
         for (var i = 0; i < times; i++)
             $.updateUnit[unit](sign);
         $.eventUpdate();
-    }
+    };
 
     $.GetUnitValue = function (unit) {
         return $[unit];
-    }
+    };
 
     var oldDM_makeSaveContents = DataManager.makeSaveContents;
     DataManager.makeSaveContents = function () {
         var contents = oldDM_makeSaveContents.call(this);
         contents.basicTimeDataEVG = $.getData();
         return contents;
-    }
+    };
 
     var oldDM_extractSaveContents = DataManager.extractSaveContents;
     DataManager.extractSaveContents = function (contents) {
         oldDM_extractSaveContents.call(this, contents);
         if (contents.basicTimeDataEVG !== undefined)
             $.setData(contents.basicTimeDataEVG);
-    }
+    };
 
     // Plugin commands
     var oldGI_pluginCommand =
