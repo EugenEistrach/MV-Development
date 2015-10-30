@@ -14,11 +14,6 @@
  * @param Position
  * @desc Top, Bot, Left oder Right auswählen
  * @default Top
- *
- *
- * @param Max Actors     
- * @desc Maximale Anzahl der Actors, die die Hud anzeigen kann (Maximal 4).            
- * @default 4
  * 
  * @param Show HP   
  * @desc Sollen HP angezeigt werden? (true oder false)            
@@ -56,12 +51,13 @@ var EVGSimpleHUD = EVGSimpleHUD || {};
     "use strict";
     $.Parameters = PluginManager.parameters('SimpleHud');
     $.Position = $.Parameters['Position'];
-    $.MaxActors = Number($.Parameters['Max Actors']).clamp(0, 4);
+    $.MaxActors = 4//Number($.Parameters['Max Actors']).clamp(0, 4);
     $.ShowHP = $.Parameters['Show HP'] == 'true';
     $.ShowMP = $.Parameters['Show MP'] == 'true';
     $.ShowTP = $.Parameters['Show TP'] == 'true';
     $.ShowName = $.Parameters['Show Name'] == 'true';
     $.ShowFace = $.Parameters['Show Face'] == 'true';
+    $.ControllSwitchID = Number($.Parameters['Controll Switch']);
     //$.ShowChar = $.Parameters['Show Character'] == 'true';
 
     var oldSM_createAllWindows = Scene_Map.prototype.createAllWindows;
@@ -87,6 +83,7 @@ var EVGSimpleHUD = EVGSimpleHUD || {};
         this._bitmaps = [];
         this._finishedLoading = false;
         this.loadImages();
+        this.oldData = [];
     };
 
     Window_SimpleHud.prototype.windowX = function () {
@@ -141,6 +138,19 @@ var EVGSimpleHUD = EVGSimpleHUD || {};
         };
     };
 
+    Window_SimpleHud.prototype.cMaxHeight = function () {
+        switch ($.Position.toLowerCase()) {
+            case 'bot':
+            case 'top':
+                return Window_Base._faceHeight;
+                break;
+            case 'left':
+            case 'right':
+                return this.contentsHeight() / 4 - 12;
+                break;
+        };
+    };
+
     Window_SimpleHud.prototype.cHeight = function () {
         var height = 0;
         if ($.ShowHP)
@@ -151,8 +161,8 @@ var EVGSimpleHUD = EVGSimpleHUD || {};
             height += this.lineHeight();
         if ($.ShowName)
             height += this.lineHeight();
-        if ($.ShowFace && height < Window_Base._faceHeight)
-            height = Window_Base._faceHeight;
+        if ($.ShowFace && height < this.cMaxHeight())
+            height = this.cMaxHeight();
         return height;
     };
 
@@ -170,10 +180,49 @@ var EVGSimpleHUD = EVGSimpleHUD || {};
         
     };
 
+    Window_SimpleHud.prototype.lineHeight = function () {
+        switch ($.Position.toLowerCase()) {
+            case 'bot':
+            case 'top':
+                return Window_Base.prototype.lineHeight.call(this);
+                break;
+            case 'left':
+            case 'right':
+                return this.cMaxHeight() / 4;
+                break;
+        };
+    }
+
+    Window_SimpleHud.prototype.contentPositionX = function (i) {
+        switch ($.Position.toLowerCase()) {
+            case 'bot':
+            case 'top':
+                return (this.cWidth() + 12) * i + 6;
+                break;
+            case 'left':
+            case 'right':
+                return 0;
+                break;
+        };
+
+    };
+
+    Window_SimpleHud.prototype.contentPositionY = function (i) {
+        switch ($.Position.toLowerCase()) {
+            case 'bot':
+            case 'top':
+                return 0;
+                break;
+            case 'left':
+            case 'right':
+                return (this.cMaxHeight() + 12) * i + 6;
+                break;
+        };
+
+    };
+
     Window_SimpleHud.prototype.loadImages = function () {
-        var max = $.MaxActors;
-        if (max > $gameParty.members().length)
-            max = $gameParty.members().length;
+        var max = this.maxActors();
         for (var i = 0; i < max; i++) {
             this._bitmaps.push(ImageManager.loadFace($gameParty.members()[i].faceName()));
         };
@@ -186,32 +235,63 @@ var EVGSimpleHUD = EVGSimpleHUD || {};
             for (var i = 0; i < this._bitmaps.length; i++) {
                 if (!this._bitmaps[i].isReady())
                     this._finishedLoading = false;
-            }
+            };
             if (this._finishedLoading)
                 this.refresh();
-        }
+        };
         if (this.needRefresh()) {
             this.refresh();
         };
-    }
+        this.visible = $gameSwitches.value($.ControllSwitchID)
+    };
 
     Window_SimpleHud.prototype.needRefresh = function () {
+        if (this.oldData.length != this.maxActors())
+            return true;
+        for (var i = 0; i < this.maxActors() ; i++) {
+            var data = this.oldData[i];
+            var actor = $gameParty.members()[i];
+            if (!data)
+                return true;
+            if (data.hp !== actor.hp || data.mp !== actor.mp || data.tp !== actor.tp)
+                return true;
+        }
         return false;
-    }
+    };
 
     Window_SimpleHud.prototype.refresh = function () {
         if (this.contents) {
             this.contents.clear();
-            this.drawActorInfo($gameParty.members()[0], 0, 0, this.cWidth());
-        }
+            var max = this.maxActors();
+            for (var i = 0; i < max; i++) {
+                var x = this.contentPositionX(i);
+                var y = this.contentPositionY(i);
+                var actor = $gameParty.members()[i];
+                var data = this.oldData[i];
+                if (!data)
+                    data = {};
+                this.drawActorInfo(actor, x, y, this.cWidth());
+                data.hp = actor.hp;
+                data.mp = actor.mp;
+                data.tp = actor.tp;
+                this.oldData[i] = data;
+            };
+        };
+    };
+
+    Window_SimpleHud.prototype.maxActors = function () {
+        var max = $.MaxActors;
+        if (max > $gameParty.members().length)
+            max = $gameParty.members().length;
+        return max;
     }
 
     Window_SimpleHud.prototype.drawActorInfo = function (actor, x, y, width) {
         var yPlus = 0;
         var maxY = this.lineHeight() * 3;
         if ($.ShowFace) {
-            this.drawActorFace(actor, x, y, Window_Base._faceHeight, Window_Base._faceWidth);
-        }           
+            this.drawActorFace(actor, x, y, this.cMaxHeight(), Window_Base._faceWidth);
+        };
         if ($.ShowName) {
             this.drawActorName(actor, x, y, width);
         };
